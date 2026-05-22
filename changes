@@ -1,3 +1,8 @@
+v3.7:
+	move Shutdown menu entry from Settings / General to Device List (main menu)
+	read package version from version file for /Mgmt/ProcessVersion
+	show live shutdown button state on Raspberry PI (works when pin shutdown is disabled)
+
 v3.6:
 	dropping support for firmware earlier than v3.10
 	moved velib_python in SetupHelper to a single version

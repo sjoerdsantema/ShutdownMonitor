@@ -2,7 +2,7 @@
 
 # setup Shutdown Monitor mechanism
 # Venus OS provides a restart command but not a shutdown command
-# This modificaiton adds a shutdown command to the Device List / Settings / General menu
+# This modificaiton adds a shutdown command to the Device List (main menu)
 #
 #	for RPI only a GPIO pin can also trigger shutdown
 

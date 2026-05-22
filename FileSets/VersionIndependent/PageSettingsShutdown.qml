@@ -10,6 +10,7 @@ MbPage
 	title: qsTr("System Shutdown")
     VBusItem { id: shutdownItem; bind: Utils.path("com.victronenergy.shutdown", "/Shutdown") }
     VBusItem { id: externalShutdown; bind: Utils.path("com.victronenergy.shutdown", "/ExtShutdownPresent") }
+    VBusItem { id: pinActive; bind: Utils.path("com.victronenergy.shutdown", "/ExtShutdownPinActive") }
     property bool externalShutdownPresent: externalShutdown.valid && externalShutdown.value == 1
 
     model: VisibleItemModel
@@ -32,9 +33,15 @@ MbPage
         MbSwitch
         {
             id: externalShutdownSwitch
-            name: qsTr("Enable shutdown pin on Raspberry PI")
+            name: qsTr("Enable shutdown pin on Raspberry PI (3 seconds)")
             bind: Utils.path("com.victronenergy.settings", "/Settings/ShutdownMonitor/ExternalSwitch")
             writeAccessLevel: User.AccessInstaller
+            show: externalShutdownPresent
+        }
+        MbItemValue
+        {
+            description: qsTr("Shutdown button")
+            item.value: !pinActive.valid ? qsTr("—") : (pinActive.value == 1 ? qsTr("Pressed") : qsTr("Not pressed"))
             show: externalShutdownPresent
         }
         MbItemText

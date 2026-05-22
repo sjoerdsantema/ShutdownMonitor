@@ -26,6 +26,14 @@ from settingsdevice import SettingsDevice
 
 ShutdownServiceName = 'com.victronenergy.shutdown'
 
+def packageVersion():
+	versionPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version')
+	try:
+		with open(versionPath) as f:
+			return f.read().strip()
+	except OSError:
+		return 'unknown'
+
 # These methods permit creation of a separate connection for each Repeater
 # overcoming the one service per process limitation
 # requires updated vedbus, originally obtained from https://github.com/victronenergy/dbus-digitalinputs
@@ -49,30 +57,14 @@ class Monitor:
 
 	DbusBus = None
 
-	# read the GPIO pin and detect tansition to active
-	# only the TRANSITION causes action
-
-	def detectPinActiveTransition (self):
-		transitionDetected = False
-		if self.ShutdownPinPresent:
-			pinFile = "/sys/class/gpio/gpio16/value"
-			if os.path.isfile (pinFile):
-				file = open (pinFile, 'r')
-				state = file.readline ().strip()
-				state = int (state)
-				if state == 0:
-					# log pin stuck warning after 2 minutes in active state
-					if self.externalPinActiveCount == 120:
-						logging.warning ("external shutdown pin appars to be stuck active low")
-					if self.externalPinActiveCount <= 120:
-						self.externalPinActiveCount += 1
-				else:
-					self.externalPinActiveCount = 0
-				# pint must be active for 3 passes (3 seconds)
-				if self.externalPinActiveCount == 3:
-					return True
-		else:
-			return False
+	def readShutdownPinPressed (self):
+		if not self.ShutdownPinPresent:
+			return None
+		pinFile = "/sys/class/gpio/gpio16/value"
+		if not os.path.isfile (pinFile):
+			return None
+		with open (pinFile, 'r') as f:
+			return int (f.readline ().strip()) == 0
 
 	def __init__(self):
 
@@ -112,14 +104,22 @@ class Monitor:
 		return True
 
 	def _background (self):
- 
-		# if shutdown pin was enabled in the GUI
 
-		# always read the pin so we have the correct state when
-		# the external switch is enabled
-		transition = self.detectPinActiveTransition ()
+		pressed = self.readShutdownPinPressed ()
+		if pressed is not None:
+			self.DbusService['/ExtShutdownPinActive'] = 1 if pressed else 0
 
-		# if shutdown pin is enabled in the GUI and a transition to active just occurred, trigger shutdown
+		transition = False
+		if pressed:
+			if self.externalPinActiveCount == 120:
+				logging.warning ("external shutdown pin appears to be stuck active low")
+			if self.externalPinActiveCount <= 120:
+				self.externalPinActiveCount += 1
+			if self.externalPinActiveCount == 3:
+				transition = True
+		else:
+			self.externalPinActiveCount = 0
+
 		if self.DbusSettings['externalSwitch'] == 1 and transition:
 			logging.critical ("User shutdown received from GPIO 16 (pin 36) - shutting down system")
 			os.system ("shutdown -h now")
@@ -135,7 +135,7 @@ class Monitor:
 		# Create the objects
 
 		self.DbusService.add_path ('/Mgmt/ProcessName', __file__)
-		self.DbusService.add_path ('/Mgmt/ProcessVersion', '1.0')
+		self.DbusService.add_path ('/Mgmt/ProcessVersion', packageVersion())
 		self.DbusService.add_path ('/Mgmt/Connection', 'dBus')
 
 		self.DbusService.add_path ('/DeviceInstance', 0)
@@ -148,6 +148,7 @@ class Monitor:
 		self.DbusService.add_path ('/Connected', 1)
 		# indicates to the GUI that it can show the RPI shutdown pin control
 		self.DbusService.add_path ('/ExtShutdownPresent', 0)
+		self.DbusService.add_path ('/ExtShutdownPinActive', 0)
 
 		# GUI sets this to initialte shutdown
 		self.DbusService.add_path ('/Shutdown', 0, writeable = True, onchangecallback = self._handlechangedvalue)

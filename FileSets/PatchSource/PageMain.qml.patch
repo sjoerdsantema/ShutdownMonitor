@@ -1,0 +1,17 @@
+--- PageMain.qml.orig	2026-05-21 16:28:56
++++ PageMain.qml	2026-05-21 16:29:05
+@@ -21,6 +21,14 @@
+ 			description: qsTr("Settings")
+ 			subpage: Component { PageSettings {} }
+ 		}
++
++		MbSubMenu
++		{
++			description: qsTr("Shutdown")
++			subpage: Component { PageSettingsShutdown {} }
++			property VBusItem shutdownItem: VBusItem { bind: "com.victronenergy.shutdown/Shutdown" }
++			show: shutdownItem.valid
++		}
+ 	}
+ 
+ 	Component {
